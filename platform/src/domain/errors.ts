@@ -4,6 +4,7 @@ export type ErrorCode =
   | 'INVALID_NAME'
   | 'INVALID_STATE_TRANSITION'
   | 'NO_SLOT_AVAILABLE'
+  | 'TASK_RUNNING'
   | 'INTERNAL_ERROR';
 
 export type ErrorStatus = 400 | 404 | 409 | 500;
@@ -14,6 +15,7 @@ const STATUS_BY_CODE: Record<ErrorCode, ErrorStatus> = {
   INVALID_NAME: 400,
   INVALID_STATE_TRANSITION: 409,
   NO_SLOT_AVAILABLE: 409,
+  TASK_RUNNING: 409,
   INTERNAL_ERROR: 500,
 };
 

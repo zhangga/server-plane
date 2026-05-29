@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev:api": "tsx src/server.ts",
+    "dev:worker": "tsx src/worker.ts",
     "render": "tsx scripts/render.ts",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -12,6 +13,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.0.4",
+    "bullmq": "^5.77.6",
     "commander": "^12.1.0",
     "ejs": "^3.1.10",
     "hono": "^4.12.23"
