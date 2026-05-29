@@ -1,5 +1,7 @@
+import { existsSync } from 'node:fs';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
+import { serveStatic } from '@hono/node-server/serve-static';
 import { EnvironmentService } from '../domain/environments.js';
 import { AppError, toErrorResponse } from '../domain/errors.js';
 import type { TaskQueue } from '../queue/taskQueue.js';
@@ -12,6 +14,8 @@ export interface AppDeps {
 }
 
 const TERMINAL_TASK_STATUSES = new Set<TaskRecord['status']>(['succeeded', 'failed']);
+const PUBLIC_ROOT = './public';
+const PUBLIC_INDEX = './public/index.html';
 
 export function createApp(deps: AppDeps): Hono {
   const app = new Hono();
@@ -94,6 +98,11 @@ export function createApp(deps: AppDeps): Hono {
       },
     });
   });
+
+  if (existsSync(PUBLIC_INDEX)) {
+    app.use('/assets/*', serveStatic({ root: PUBLIC_ROOT }));
+    app.get('*', serveStatic({ path: PUBLIC_INDEX }));
+  }
 
   return app;
 }
