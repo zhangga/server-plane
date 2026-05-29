@@ -11,9 +11,14 @@ import { EnvironmentStore } from '../src/store/environmentStore.js';
 
 class RecordingQueue implements TaskQueue {
   readonly taskIds: string[] = [];
+  healthy = true;
 
   async enqueue(taskId: string): Promise<void> {
     this.taskIds.push(taskId);
+  }
+
+  async healthCheck(): Promise<boolean> {
+    return this.healthy;
   }
 }
 
@@ -76,6 +81,21 @@ describe('environment API with task worker', () => {
     const slots = await app.request('/api/slots');
     expect(slots.status).toBe(200);
     expect(await slots.json()).toEqual({ occupiedSlots: [] });
+  });
+
+  it('returns 503 when queue health fails', async () => {
+    queue.healthy = false;
+
+    const res = await app.request('/api/health');
+
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({
+      ok: false,
+      checks: {
+        queue: false,
+        store: true,
+      },
+    });
   });
 
   it('returns TASK_NOT_FOUND for missing task detail and logs', async () => {

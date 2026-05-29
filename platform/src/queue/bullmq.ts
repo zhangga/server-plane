@@ -30,6 +30,15 @@ export class BullTaskQueue implements TaskQueue {
     await this.queue.add(taskId, { taskId }, { removeOnComplete: 1000, removeOnFail: 1000 });
   }
 
+  async healthCheck(): Promise<boolean> {
+    try {
+      await this.queue.getJobCounts('waiting');
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async close(): Promise<void> {
     await this.queue.close();
   }

@@ -24,12 +24,13 @@ export function createApp(deps: AppDeps): Hono {
     taskQueue: deps.taskQueue,
   });
 
-  app.get('/api/health', (c) => {
+  app.get('/api/health', async (c) => {
     const checks = {
       store: deps.store.healthCheck(),
-      queue: Boolean(deps.taskQueue),
+      queue: await deps.taskQueue.healthCheck(),
     };
-    return c.json({ ok: Object.values(checks).every(Boolean), checks });
+    const ok = Object.values(checks).every(Boolean);
+    return c.json({ ok, checks }, ok ? 200 : 503);
   });
 
   app.get('/api/slots', (c) => c.json({ occupiedSlots: deps.store.occupiedSlots() }));
