@@ -1,4 +1,12 @@
-import type { AcceptedTask, CreateEnvironmentInput, Environment, EnvironmentAction, EnvironmentState } from './types';
+import type {
+  AcceptedTask,
+  ContainerLogsResponse,
+  ContainerLogService,
+  CreateEnvironmentInput,
+  Environment,
+  EnvironmentAction,
+  EnvironmentState,
+} from './types';
 
 interface EnvironmentListResponse {
   environments: Environment[];
@@ -42,6 +50,17 @@ export async function changeEnvironmentImageTag(envId: string, imageTag: string)
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ imageTag }),
   });
+}
+
+export async function fetchContainerLogs(
+  envId: string,
+  options: { service: ContainerLogService; tail: number },
+): Promise<ContainerLogsResponse> {
+  const params = new URLSearchParams({
+    service: options.service,
+    tail: String(options.tail),
+  });
+  return request<ContainerLogsResponse>(`/api/environments/${envId}/container-logs?${params.toString()}`);
 }
 
 export async function deleteEnvironment(envId: string): Promise<AcceptedTask> {

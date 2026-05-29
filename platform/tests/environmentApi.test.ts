@@ -27,6 +27,13 @@ describe('environment API with task worker', () => {
   let runtimeRoot: string;
   let store: EnvironmentStore;
   let dockerCalls: ComposeCommand[];
+  let containerLogCalls: Array<{
+    projectName: string;
+    composeFile: string;
+    cwd: string;
+    service: string;
+    tail: number;
+  }>;
   let pulledImages: string[];
   let queue: RecordingQueue;
   let processor: TaskProcessor;
@@ -37,6 +44,7 @@ describe('environment API with task worker', () => {
     runtimeRoot = join(tempRoot, 'runtime');
     store = new EnvironmentStore(join(tempRoot, 'metadata.sqlite'));
     dockerCalls = [];
+    containerLogCalls = [];
     pulledImages = [];
     queue = new RecordingQueue();
 
@@ -58,6 +66,10 @@ describe('environment API with task worker', () => {
       store,
       taskQueue: queue,
       runtimeRoot,
+      composeLogReader: async (command) => {
+        containerLogCalls.push(command);
+        return `${command.service} line 1\n${command.service} line 2\n`;
+      },
     });
   });
 
@@ -116,6 +128,59 @@ describe('environment API with task worker', () => {
         message: 'Task not found',
       },
     });
+  });
+
+  it('returns recent container logs for an environment service', async () => {
+    const created = await createAndProcess('alice-dev');
+
+    const res = await app.request(`/api/environments/${created.envId}/container-logs?service=tgateserver&tail=300`);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      envId: created.envId,
+      service: 'tgateserver',
+      tail: 300,
+      logs: 'tgateserver line 1\ntgateserver line 2\n',
+    });
+    expect(containerLogCalls).toEqual([
+      {
+        projectName: 'pst-alice-dev',
+        composeFile: join(runtimeRoot, 'alice-dev', 'docker-compose.yml'),
+        cwd: join(runtimeRoot, 'alice-dev'),
+        service: 'tgateserver',
+        tail: 300,
+      },
+    ]);
+  });
+
+  it('rejects unsupported container log services', async () => {
+    const created = await createAndProcess('alice-dev');
+
+    const res = await app.request(`/api/environments/${created.envId}/container-logs?service=unknown&tail=300`);
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error: {
+        code: 'INVALID_LOG_SERVICE',
+        message: 'Unsupported container log service',
+      },
+    });
+    expect(containerLogCalls).toEqual([]);
+  });
+
+  it('rejects container log tail values outside the allowed range', async () => {
+    const created = await createAndProcess('alice-dev');
+
+    const res = await app.request(`/api/environments/${created.envId}/container-logs?service=tgateserver&tail=1001`);
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error: {
+        code: 'INVALID_LOG_TAIL',
+        message: 'Container log tail must be between 1 and 1000',
+      },
+    });
+    expect(containerLogCalls).toEqual([]);
   });
 
   it('enqueues create, worker renders runtime, and task logs are available over SSE', async () => {

@@ -21,7 +21,7 @@ pnpm dev:worker
 pnpm dev:web
 ```
 
-`pnpm dev:web` 会把 `/api` 代理到 `http://localhost:3000`。创建环境时镜像 tag 默认是 `master-latest`，也可以在创建弹窗里输入指定 tag；已有环境可以在卡片上切换 tag，并立即触发一次更新镜像任务。
+`pnpm dev:web` 会把 `/api` 代理到 `http://localhost:3000`。创建环境时镜像 tag 默认是 `master-latest`，也可以在创建弹窗里输入指定 tag；已有环境可以在卡片上切换 tag，并立即触发一次更新镜像任务。卡片上的容器日志入口会读取当前环境指定服务最近 300 行 Docker Compose 日志。
 
 API 和 worker 默认使用：
 
@@ -69,12 +69,13 @@ docker compose -f platform/deploy/docker-compose.yml ps
 2. 打开 `http://<host>:3000` 创建一套环境，例如 `dogfood`。
 3. 在任务抽屉确认 `env.create` 成功，环境进入 `running`。
 4. 用卡片端口连接客户端，验证 tgate/game 等端口段正确。
-5. 依次试 `stop`、`start`、`restart`、`wipe`、切换镜像 tag、`update-images`。
+5. 依次试 `stop`、`start`、`restart`、`wipe`、查看容器日志、切换镜像 tag、`update-images`。
 6. 销毁时输入环境名二次确认，之后检查 `docker compose -p pst-dogfood ps` 无残留，`down -v` 已清理 named volume。
 
 ## 注意事项
 
 - 更新镜像会拉取该环境当前 tag 的业务镜像，其他同 tag 环境下次启动也会用到宿主机上已拉取的新镜像。
+- 容器日志查看使用 `docker compose logs --tail 300 <service>`，只读取最近日志，不保持实时 follow。
 - `wipe` 会执行 `docker compose down -v` 后再 `up -d`，清空 named volume，但保留 `external_config`。
 - 平台不做鉴权，默认只部署在可信内网。
 - Node 当前使用 `node:sqlite`，测试时会出现 Node 的 experimental warning，这是运行时自身提示。

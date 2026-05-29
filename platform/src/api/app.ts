@@ -1,9 +1,12 @@
 import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { serveStatic } from '@hono/node-server/serve-static';
+import { COMPOSE_PROJECT_PREFIX } from '../config.js';
 import { EnvironmentService } from '../domain/environments.js';
 import { AppError, toErrorResponse } from '../domain/errors.js';
+import type { ComposeLogReader } from '../docker/logs.js';
 import type { TaskQueue } from '../queue/taskQueue.js';
 import type { EnvironmentState, EnvironmentStore, TaskRecord } from '../store/environmentStore.js';
 
@@ -11,11 +14,25 @@ export interface AppDeps {
   store: EnvironmentStore;
   taskQueue: TaskQueue;
   runtimeRoot: string;
+  composeLogReader: ComposeLogReader;
 }
 
 const TERMINAL_TASK_STATUSES = new Set<TaskRecord['status']>(['succeeded', 'failed']);
 const PUBLIC_ROOT = './public';
 const PUBLIC_INDEX = './public/index.html';
+const CONTAINER_LOG_SERVICES = new Set([
+  'tgateserver',
+  'gameserver',
+  'scenexserver',
+  'globalserver',
+  'matcherserver',
+  'redis',
+  'mongodb',
+  'etcd',
+  'etcd-init',
+]);
+const DEFAULT_LOG_TAIL = 300;
+const MAX_LOG_TAIL = 1000;
 
 export function createApp(deps: AppDeps): Hono {
   const app = new Hono();
@@ -60,6 +77,35 @@ export function createApp(deps: AppDeps): Hono {
   app.get('/api/environments/:id', (c) => {
     try {
       return c.json(environments.get(c.req.param('id')));
+    } catch (err) {
+      return errorJson(c, err);
+    }
+  });
+
+  app.get('/api/environments/:id/container-logs', async (c) => {
+    try {
+      const env = deps.store.findById(c.req.param('id'));
+      if (!env) {
+        throw new AppError('ENV_NOT_FOUND', 'Environment not found');
+      }
+
+      const service = parseContainerLogService(c.req.query('service'));
+      const tail = parseLogTail(c.req.query('tail'));
+      const cwd = join(deps.runtimeRoot, env.name);
+      const logs = await deps.composeLogReader({
+        projectName: `${COMPOSE_PROJECT_PREFIX}${env.name}`,
+        composeFile: join(cwd, 'docker-compose.yml'),
+        cwd,
+        service,
+        tail,
+      });
+
+      return c.json({
+        envId: env.id,
+        service,
+        tail,
+        logs,
+      });
     } catch (err) {
       return errorJson(c, err);
     }
@@ -131,6 +177,30 @@ export function createApp(deps: AppDeps): Hono {
 function errorJson(c: Context, err: unknown): Response {
   const { status, body } = toErrorResponse(err);
   return c.json(body, status);
+}
+
+function parseContainerLogService(serviceInput: string | undefined): string {
+  const service = serviceInput?.trim() || 'tgateserver';
+  if (!CONTAINER_LOG_SERVICES.has(service)) {
+    throw new AppError('INVALID_LOG_SERVICE', 'Unsupported container log service');
+  }
+  return service;
+}
+
+function parseLogTail(tailInput: string | undefined): number {
+  if (!tailInput) {
+    return DEFAULT_LOG_TAIL;
+  }
+
+  if (!/^\d+$/.test(tailInput)) {
+    throw new AppError('INVALID_LOG_TAIL', 'Container log tail must be between 1 and 1000');
+  }
+
+  const tail = Number.parseInt(tailInput, 10);
+  if (!Number.isInteger(tail) || tail < 1 || tail > MAX_LOG_TAIL) {
+    throw new AppError('INVALID_LOG_TAIL', 'Container log tail must be between 1 and 1000');
+  }
+  return tail;
 }
 
 function createTaskLogStream(store: EnvironmentStore, taskId: string, afterSeq: number): ReadableStream<Uint8Array> {

@@ -32,7 +32,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -411,6 +412,15 @@ input {
   background: #fff;
 }
 
+select {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 0 10px;
+  color: var(--ink);
+  background: #fff;
+}
+
 .warning-panel {
   border: 1px solid #e0c7a1;
   border-radius: 7px;
@@ -451,6 +461,16 @@ input {
   padding: 4px 10px;
   color: var(--muted);
   background: #eef1e9;
+}
+
+.drawer-controls {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+}
+
+.drawer-controls label {
+  flex: 1;
 }
 
 .status-succeeded {

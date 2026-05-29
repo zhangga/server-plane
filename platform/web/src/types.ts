@@ -11,6 +11,16 @@ export type TaskType =
 
 export type EnvironmentAction = 'start' | 'stop' | 'restart' | 'wipe' | 'update-images' | 'destroy';
 export type EnvironmentFilter = 'mine' | 'all' | 'running' | 'stopped' | 'failed' | 'destroyed';
+export type ContainerLogService =
+  | 'tgateserver'
+  | 'gameserver'
+  | 'scenexserver'
+  | 'globalserver'
+  | 'matcherserver'
+  | 'redis'
+  | 'mongodb'
+  | 'etcd'
+  | 'etcd-init';
 
 export interface TaskSummary {
   id: string;
@@ -54,4 +64,11 @@ export interface CreateEnvironmentInput {
   name: string;
   owner: string;
   imageTag: string;
+}
+
+export interface ContainerLogsResponse {
+  envId: string;
+  service: ContainerLogService;
+  tail: number;
+  logs: string;
 }

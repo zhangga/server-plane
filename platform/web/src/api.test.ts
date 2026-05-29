@@ -3,6 +3,7 @@ import {
   changeEnvironmentImageTag,
   createEnvironment,
   deleteEnvironment,
+  fetchContainerLogs,
   fetchEnvironments,
   postEnvironmentAction,
 } from './api';
@@ -105,6 +106,28 @@ describe('web api client', () => {
     await expect(changeEnvironmentImageTag('env_1', 'feature-456')).resolves.toEqual({
       envId: 'env_1',
       taskId: 'task_update',
+    });
+  });
+
+  it('fetches recent container logs', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url) => {
+        expect(url).toBe('/api/environments/env_1/container-logs?service=gameserver&tail=300');
+        return jsonResponse({
+          envId: 'env_1',
+          service: 'gameserver',
+          tail: 300,
+          logs: 'gameserver line 1\n',
+        });
+      }),
+    );
+
+    await expect(fetchContainerLogs('env_1', { service: 'gameserver', tail: 300 })).resolves.toEqual({
+      envId: 'env_1',
+      service: 'gameserver',
+      tail: 300,
+      logs: 'gameserver line 1\n',
     });
   });
 });

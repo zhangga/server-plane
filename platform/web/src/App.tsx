@@ -5,6 +5,7 @@ import {
   Archive,
   Boxes,
   CircleAlert,
+  FileText,
   Filter,
   Play,
   Plus,
@@ -20,16 +21,25 @@ import {
   changeEnvironmentImageTag,
   createEnvironment,
   deleteEnvironment,
+  fetchContainerLogs,
   fetchEnvironments,
   postEnvironmentAction,
 } from './api';
+import { ContainerLogsDrawer } from './components/ContainerLogsDrawer';
 import { ConfirmActionDialog } from './components/ConfirmActionDialog';
 import { CreateEnvironmentDialog } from './components/CreateEnvironmentDialog';
 import { ImageTagDialog } from './components/ImageTagDialog';
 import { TaskDrawer } from './components/TaskDrawer';
 import { loadOwnerPreference, saveOwnerPreference } from './ownerPreference';
 import { actionDisabledReason, filterEnvironments, hasInFlightTask } from './state';
-import type { AcceptedTask, Environment, EnvironmentAction, EnvironmentFilter, EnvironmentState } from './types';
+import type {
+  AcceptedTask,
+  ContainerLogService,
+  Environment,
+  EnvironmentAction,
+  EnvironmentFilter,
+  EnvironmentState,
+} from './types';
 
 const FILTERS: Array<{ key: EnvironmentFilter; label: string }> = [
   { key: 'mine', label: '我的' },
@@ -41,6 +51,8 @@ const FILTERS: Array<{ key: EnvironmentFilter; label: string }> = [
 ];
 
 const STATE_FILTERS = new Set<EnvironmentFilter>(['running', 'stopped', 'failed', 'destroyed']);
+const DEFAULT_LOG_SERVICE: ContainerLogService = 'tgateserver';
+const DEFAULT_LOG_TAIL = 300;
 
 export function App() {
   const queryClient = useQueryClient();
@@ -49,6 +61,8 @@ export function App() {
   const [ownerDraft, setOwnerDraft] = useState(currentOwner);
   const [createOpen, setCreateOpen] = useState(false);
   const [activeTask, setActiveTask] = useState<AcceptedTask | null>(null);
+  const [logsEnv, setLogsEnv] = useState<Environment | null>(null);
+  const [logsService, setLogsService] = useState<ContainerLogService>(DEFAULT_LOG_SERVICE);
   const [pendingTagEnv, setPendingTagEnv] = useState<Environment | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<{
     env: Environment;
@@ -72,6 +86,19 @@ export function App() {
       setActiveTask(task);
       void queryClient.invalidateQueries({ queryKey: ['environments'] });
     },
+  });
+
+  const containerLogsQuery = useQuery({
+    queryKey: ['container-logs', logsEnv?.id, logsService, DEFAULT_LOG_TAIL],
+    queryFn: () =>
+      fetchContainerLogs(logsEnv!.id, {
+        service: logsService,
+        tail: DEFAULT_LOG_TAIL,
+    }),
+    enabled: Boolean(logsEnv),
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    retry: false,
   });
 
   const changeTagMutation = useMutation({
@@ -186,6 +213,10 @@ export function App() {
                 actionMutation.mutate({ env, action });
               }}
               onChangeTag={(targetEnv) => setPendingTagEnv(targetEnv)}
+              onOpenLogs={(targetEnv) => {
+                setLogsEnv(targetEnv);
+                setLogsService(DEFAULT_LOG_SERVICE);
+              }}
               onOpenTask={(taskId) => setActiveTask({ envId: env.id, taskId })}
             />
           ))}
@@ -233,6 +264,18 @@ export function App() {
         }}
       />
 
+      <ContainerLogsDrawer
+        env={logsEnv}
+        service={logsService}
+        tail={DEFAULT_LOG_TAIL}
+        logs={containerLogsQuery.data?.logs ?? ''}
+        isLoading={containerLogsQuery.isFetching}
+        error={containerLogsQuery.error instanceof Error ? containerLogsQuery.error : null}
+        onClose={() => setLogsEnv(null)}
+        onRefresh={() => void containerLogsQuery.refetch()}
+        onServiceChange={(service) => setLogsService(service)}
+      />
+
       <TaskDrawer
         taskId={activeTask?.taskId ?? null}
         onClose={() => {
@@ -257,11 +300,13 @@ function EnvironmentCard({
   env,
   onAction,
   onChangeTag,
+  onOpenLogs,
   onOpenTask,
 }: {
   env: Environment;
   onAction: (action: EnvironmentAction) => void;
   onChangeTag: (env: Environment) => void;
+  onOpenLogs: (env: Environment) => void;
   onOpenTask: (taskId: string) => void;
 }) {
   const actions: Array<{ key: EnvironmentAction; label: string; icon: ReactNode }> = [
@@ -273,6 +318,7 @@ function EnvironmentCard({
     { key: 'destroy', label: '销毁', icon: <Trash2 size={15} /> },
   ];
   const tagDisabledReason = actionDisabledReason('update-images', env);
+  const logsDisabledReason = env.state === 'destroyed' ? '当前状态不可用' : null;
 
   return (
     <article className="env-card">
@@ -318,6 +364,14 @@ function EnvironmentCard({
       ) : null}
 
       <div className="action-row">
+        <button
+          className="icon-button"
+          disabled={Boolean(logsDisabledReason)}
+          title={logsDisabledReason ?? '查看容器日志'}
+          onClick={() => onOpenLogs(env)}
+        >
+          <FileText size={15} />
+        </button>
         <button
           className="icon-button"
           disabled={Boolean(tagDisabledReason)}

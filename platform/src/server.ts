@@ -2,6 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { serve } from '@hono/node-server';
 import { createApp } from './api/app.js';
+import { runDockerComposeLogs } from './docker/logs.js';
 import { BullTaskQueue } from './queue/bullmq.js';
 import { EnvironmentStore } from './store/environmentStore.js';
 
@@ -18,6 +19,7 @@ const app = createApp({
   store,
   taskQueue,
   runtimeRoot,
+  composeLogReader: runDockerComposeLogs,
 });
 
 serve({ fetch: app.fetch, port }, (info) => {
