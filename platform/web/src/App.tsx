@@ -7,6 +7,7 @@ import {
   CircleAlert,
   FileText,
   Filter,
+  Info,
   Play,
   Plus,
   RefreshCw,
@@ -22,10 +23,12 @@ import {
   createEnvironment,
   deleteEnvironment,
   fetchContainerLogs,
+  fetchEnvironmentDetail,
   fetchEnvironments,
   postEnvironmentAction,
 } from './api';
 import { ContainerLogsDrawer } from './components/ContainerLogsDrawer';
+import { EnvironmentDetailDrawer } from './components/EnvironmentDetailDrawer';
 import { ConfirmActionDialog } from './components/ConfirmActionDialog';
 import { CreateEnvironmentDialog } from './components/CreateEnvironmentDialog';
 import { ImageTagDialog } from './components/ImageTagDialog';
@@ -61,6 +64,7 @@ export function App() {
   const [ownerDraft, setOwnerDraft] = useState(currentOwner);
   const [createOpen, setCreateOpen] = useState(false);
   const [activeTask, setActiveTask] = useState<AcceptedTask | null>(null);
+  const [detailEnv, setDetailEnv] = useState<Environment | null>(null);
   const [logsEnv, setLogsEnv] = useState<Environment | null>(null);
   const [logsService, setLogsService] = useState<ContainerLogService>(DEFAULT_LOG_SERVICE);
   const [pendingTagEnv, setPendingTagEnv] = useState<Environment | null>(null);
@@ -96,6 +100,15 @@ export function App() {
         tail: DEFAULT_LOG_TAIL,
     }),
     enabled: Boolean(logsEnv),
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
+
+  const environmentDetailQuery = useQuery({
+    queryKey: ['environment-detail', detailEnv?.id],
+    queryFn: () => fetchEnvironmentDetail(detailEnv!.id),
+    enabled: Boolean(detailEnv),
     refetchInterval: false,
     refetchOnWindowFocus: false,
     retry: false,
@@ -213,6 +226,7 @@ export function App() {
                 actionMutation.mutate({ env, action });
               }}
               onChangeTag={(targetEnv) => setPendingTagEnv(targetEnv)}
+              onOpenDetail={(targetEnv) => setDetailEnv(targetEnv)}
               onOpenLogs={(targetEnv) => {
                 setLogsEnv(targetEnv);
                 setLogsService(DEFAULT_LOG_SERVICE);
@@ -264,6 +278,22 @@ export function App() {
         }}
       />
 
+      <EnvironmentDetailDrawer
+        detail={environmentDetailQuery.data ?? null}
+        envName={detailEnv?.name}
+        isLoading={environmentDetailQuery.isFetching}
+        error={environmentDetailQuery.error instanceof Error ? environmentDetailQuery.error : null}
+        onClose={() => setDetailEnv(null)}
+        onRefresh={() => void environmentDetailQuery.refetch()}
+        onOpenServiceLogs={(service) => {
+          if (!detailEnv) {
+            return;
+          }
+          setLogsEnv(detailEnv);
+          setLogsService(service);
+        }}
+      />
+
       <ContainerLogsDrawer
         env={logsEnv}
         service={logsService}
@@ -300,12 +330,14 @@ function EnvironmentCard({
   env,
   onAction,
   onChangeTag,
+  onOpenDetail,
   onOpenLogs,
   onOpenTask,
 }: {
   env: Environment;
   onAction: (action: EnvironmentAction) => void;
   onChangeTag: (env: Environment) => void;
+  onOpenDetail: (env: Environment) => void;
   onOpenLogs: (env: Environment) => void;
   onOpenTask: (taskId: string) => void;
 }) {
@@ -364,6 +396,13 @@ function EnvironmentCard({
       ) : null}
 
       <div className="action-row">
+        <button
+          className="icon-button"
+          title="查看环境详情"
+          onClick={() => onOpenDetail(env)}
+        >
+          <Info size={15} />
+        </button>
         <button
           className="icon-button"
           disabled={Boolean(logsDisabledReason)}

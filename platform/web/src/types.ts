@@ -72,3 +72,30 @@ export interface ContainerLogsResponse {
   tail: number;
   logs: string;
 }
+
+export interface PublishedPort {
+  publishedPort: number | null;
+  targetPort: number | null;
+  protocol: string | null;
+}
+
+export interface EnvironmentServiceDetail {
+  service: ContainerLogService;
+  containerName: string | null;
+  image: string | null;
+  state: string;
+  status: string;
+  health: string | null;
+  exitCode: number | null;
+  hostPort: number | null;
+  publishedPorts: PublishedPort[];
+  missing: boolean;
+}
+
+export interface EnvironmentDetail {
+  environment: Environment;
+  composeProject: string;
+  runtimePath: string;
+  composeFile: string;
+  services: EnvironmentServiceDetail[];
+}

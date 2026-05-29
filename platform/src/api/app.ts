@@ -5,8 +5,10 @@ import type { Context } from 'hono';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { COMPOSE_PROJECT_PREFIX } from '../config.js';
 import { EnvironmentService } from '../domain/environments.js';
+import type { EnvironmentResponse } from '../domain/environments.js';
 import { AppError, toErrorResponse } from '../domain/errors.js';
 import type { ComposeLogReader } from '../docker/logs.js';
+import type { ComposePsReader, ComposePsService } from '../docker/ps.js';
 import type { TaskQueue } from '../queue/taskQueue.js';
 import type { EnvironmentState, EnvironmentStore, TaskRecord } from '../store/environmentStore.js';
 
@@ -15,6 +17,7 @@ export interface AppDeps {
   taskQueue: TaskQueue;
   runtimeRoot: string;
   composeLogReader: ComposeLogReader;
+  composePsReader: ComposePsReader;
 }
 
 const TERMINAL_TASK_STATUSES = new Set<TaskRecord['status']>(['succeeded', 'failed']);
@@ -33,6 +36,30 @@ const CONTAINER_LOG_SERVICES = new Set([
 ]);
 const DEFAULT_LOG_TAIL = 300;
 const MAX_LOG_TAIL = 1000;
+const DETAIL_SERVICES = [
+  'tgateserver',
+  'gameserver',
+  'scenexserver',
+  'globalserver',
+  'matcherserver',
+  'redis',
+  'mongodb',
+  'etcd',
+  'etcd-init',
+] as const;
+type EnvironmentPortKey = keyof EnvironmentResponse['ports'];
+
+const SERVICE_PORT_KEYS: Record<(typeof DETAIL_SERVICES)[number], EnvironmentPortKey | null> = {
+  tgateserver: 'tgate',
+  gameserver: 'gameserver',
+  scenexserver: 'scenex',
+  globalserver: 'global',
+  matcherserver: 'matcher',
+  redis: 'redis',
+  mongodb: 'mongo',
+  etcd: null,
+  'etcd-init': null,
+};
 
 export function createApp(deps: AppDeps): Hono {
   const app = new Hono();
@@ -105,6 +132,32 @@ export function createApp(deps: AppDeps): Hono {
         service,
         tail,
         logs,
+      });
+    } catch (err) {
+      return errorJson(c, err);
+    }
+  });
+
+  app.get('/api/environments/:id/detail', async (c) => {
+    try {
+      const environment = environments.get(c.req.param('id'));
+      const runtimePath = join(deps.runtimeRoot, environment.name);
+      const composeFile = join(runtimePath, 'docker-compose.yml');
+      const composeProject = `${COMPOSE_PROJECT_PREFIX}${environment.name}`;
+      const composeServices = existsSync(composeFile)
+        ? await deps.composePsReader({
+            projectName: composeProject,
+            composeFile,
+            cwd: runtimePath,
+          })
+        : [];
+
+      return c.json({
+        environment,
+        composeProject,
+        runtimePath,
+        composeFile,
+        services: buildServiceDetails(environment.ports, composeServices),
       });
     } catch (err) {
       return errorJson(c, err);
@@ -201,6 +254,44 @@ function parseLogTail(tailInput: string | undefined): number {
     throw new AppError('INVALID_LOG_TAIL', 'Container log tail must be between 1 and 1000');
   }
   return tail;
+}
+
+function buildServiceDetails(ports: EnvironmentResponse['ports'], composeServices: ComposePsService[]) {
+  const byService = new Map(composeServices.map((service) => [service.service, service]));
+
+  return DETAIL_SERVICES.map((service) => {
+    const composeService = byService.get(service);
+    const portKey = SERVICE_PORT_KEYS[service];
+    const hostPort = portKey ? ports[portKey] ?? null : null;
+
+    if (!composeService) {
+      return {
+        service,
+        containerName: null,
+        image: null,
+        state: 'missing',
+        status: 'missing',
+        health: null,
+        exitCode: null,
+        hostPort,
+        publishedPorts: [],
+        missing: true,
+      };
+    }
+
+    return {
+      service,
+      containerName: composeService.name,
+      image: composeService.image,
+      state: composeService.state ?? 'unknown',
+      status: composeService.status ?? composeService.state ?? 'unknown',
+      health: composeService.health,
+      exitCode: composeService.exitCode,
+      hostPort,
+      publishedPorts: composeService.publishers,
+      missing: false,
+    };
+  });
 }
 
 function createTaskLogStream(store: EnvironmentStore, taskId: string, afterSeq: number): ReadableStream<Uint8Array> {

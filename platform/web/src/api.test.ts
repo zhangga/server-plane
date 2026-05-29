@@ -4,6 +4,7 @@ import {
   createEnvironment,
   deleteEnvironment,
   fetchContainerLogs,
+  fetchEnvironmentDetail,
   fetchEnvironments,
   postEnvironmentAction,
 } from './api';
@@ -128,6 +129,27 @@ describe('web api client', () => {
       service: 'gameserver',
       tail: 300,
       logs: 'gameserver line 1\n',
+    });
+  });
+
+  it('fetches environment detail', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url) => {
+        expect(url).toBe('/api/environments/env_1/detail');
+        return jsonResponse({
+          composeProject: 'pst-alice-dev',
+          runtimePath: '/runtime/alice-dev',
+          composeFile: '/runtime/alice-dev/docker-compose.yml',
+          environment: { id: 'env_1', name: 'alice-dev' },
+          services: [],
+        });
+      }),
+    );
+
+    await expect(fetchEnvironmentDetail('env_1')).resolves.toMatchObject({
+      composeProject: 'pst-alice-dev',
+      runtimePath: '/runtime/alice-dev',
     });
   });
 });

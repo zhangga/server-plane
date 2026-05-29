@@ -5,6 +5,7 @@ import type {
   CreateEnvironmentInput,
   Environment,
   EnvironmentAction,
+  EnvironmentDetail,
   EnvironmentState,
 } from './types';
 
@@ -61,6 +62,10 @@ export async function fetchContainerLogs(
     tail: String(options.tail),
   });
   return request<ContainerLogsResponse>(`/api/environments/${envId}/container-logs?${params.toString()}`);
+}
+
+export async function fetchEnvironmentDetail(envId: string): Promise<EnvironmentDetail> {
+  return request<EnvironmentDetail>(`/api/environments/${envId}/detail`);
 }
 
 export async function deleteEnvironment(envId: string): Promise<AcceptedTask> {

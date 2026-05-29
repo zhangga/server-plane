@@ -34,6 +34,11 @@ describe('environment API with task worker', () => {
     service: string;
     tail: number;
   }>;
+  let composePsCalls: Array<{
+    projectName: string;
+    composeFile: string;
+    cwd: string;
+  }>;
   let pulledImages: string[];
   let queue: RecordingQueue;
   let processor: TaskProcessor;
@@ -45,6 +50,7 @@ describe('environment API with task worker', () => {
     store = new EnvironmentStore(join(tempRoot, 'metadata.sqlite'));
     dockerCalls = [];
     containerLogCalls = [];
+    composePsCalls = [];
     pulledImages = [];
     queue = new RecordingQueue();
 
@@ -69,6 +75,31 @@ describe('environment API with task worker', () => {
       composeLogReader: async (command) => {
         containerLogCalls.push(command);
         return `${command.service} line 1\n${command.service} line 2\n`;
+      },
+      composePsReader: async (command) => {
+        composePsCalls.push(command);
+        return [
+          {
+            service: 'tgateserver',
+            name: 'pst-alice-dev-tgateserver-1',
+            image: 'harbor-sh.dailygn.com/pst/tgateserver:master-latest',
+            state: 'running',
+            status: 'Up 2 minutes',
+            health: 'healthy',
+            exitCode: null,
+            publishers: [{ publishedPort: 20101, targetPort: 12001, protocol: 'tcp' }],
+          },
+          {
+            service: 'redis',
+            name: 'pst-alice-dev-redis-1',
+            image: 'redis:7',
+            state: 'exited',
+            status: 'Exited (1)',
+            health: null,
+            exitCode: 1,
+            publishers: [{ publishedPort: 20179, targetPort: 6379, protocol: 'tcp' }],
+          },
+        ];
       },
     });
   });
@@ -181,6 +212,60 @@ describe('environment API with task worker', () => {
       },
     });
     expect(containerLogCalls).toEqual([]);
+  });
+
+  it('returns environment detail with compose metadata and service health', async () => {
+    const created = await createAndProcess('alice-dev');
+
+    const res = await app.request(`/api/environments/${created.envId}/detail`);
+
+    expect(res.status).toBe(200);
+    const detail = await res.json();
+    expect(detail).toMatchObject({
+      composeProject: 'pst-alice-dev',
+      runtimePath: join(runtimeRoot, 'alice-dev'),
+      composeFile: join(runtimeRoot, 'alice-dev', 'docker-compose.yml'),
+      environment: {
+        id: created.envId,
+        name: 'alice-dev',
+        state: 'running',
+        latestTask: {
+          id: created.taskId,
+          status: 'succeeded',
+        },
+      },
+    });
+    expect(detail.services).toHaveLength(9);
+    expect(detail.services).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          service: 'tgateserver',
+          containerName: 'pst-alice-dev-tgateserver-1',
+          image: 'harbor-sh.dailygn.com/pst/tgateserver:master-latest',
+          state: 'running',
+          status: 'Up 2 minutes',
+          health: 'healthy',
+          exitCode: null,
+          hostPort: 20101,
+          missing: false,
+        }),
+        expect.objectContaining({
+          service: 'gameserver',
+          containerName: null,
+          state: 'missing',
+          status: 'missing',
+          hostPort: 20110,
+          missing: true,
+        }),
+      ]),
+    );
+    expect(composePsCalls).toEqual([
+      {
+        projectName: 'pst-alice-dev',
+        composeFile: join(runtimeRoot, 'alice-dev', 'docker-compose.yml'),
+        cwd: join(runtimeRoot, 'alice-dev'),
+      },
+    ]);
   });
 
   it('enqueues create, worker renders runtime, and task logs are available over SSE', async () => {
