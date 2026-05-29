@@ -1,6 +1,7 @@
 export type ErrorCode =
   | 'ENV_NOT_FOUND'
   | 'ENV_NAME_TAKEN'
+  | 'INVALID_IMAGE_TAG'
   | 'INVALID_NAME'
   | 'INVALID_STATE_TRANSITION'
   | 'NO_SLOT_AVAILABLE'
@@ -13,6 +14,7 @@ export type ErrorStatus = 400 | 404 | 409 | 500;
 const STATUS_BY_CODE: Record<ErrorCode, ErrorStatus> = {
   ENV_NOT_FOUND: 404,
   ENV_NAME_TAKEN: 409,
+  INVALID_IMAGE_TAG: 400,
   INVALID_NAME: 400,
   INVALID_STATE_TRANSITION: 409,
   NO_SLOT_AVAILABLE: 409,

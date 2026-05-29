@@ -48,6 +48,7 @@ export function createApp(deps: AppDeps): Hono {
         await environments.create({
           name: body.name,
           owner: body.owner,
+          imageTag: body.imageTag,
         }),
         202,
       );

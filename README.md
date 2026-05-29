@@ -21,7 +21,9 @@ pnpm dev:worker
 pnpm dev:web
 ```
 
-`pnpm dev:web` 会把 `/api` 代理到 `http://localhost:3000`。API 和 worker 默认使用：
+`pnpm dev:web` 会把 `/api` 代理到 `http://localhost:3000`。创建环境时镜像 tag 默认是 `master-latest`，也可以在创建弹窗里输入指定 tag；后续 `update-images` 会拉取该环境自己的 tag。
+
+API 和 worker 默认使用：
 
 - `PST_RUNTIME_ROOT=platform/runtime`
 - `PST_DB_PATH=platform/runtime/metadata.sqlite`

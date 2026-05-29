@@ -192,6 +192,41 @@ describe('environment API with task worker', () => {
     expect(logs).toContain('"status":"succeeded"');
   });
 
+  it('creates an environment with a custom image tag', async () => {
+    const res = await app.request('/api/environments', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'feature-dev', owner: 'alice', imageTag: 'feature-123' }),
+    });
+    const accepted = await res.json();
+
+    await processor.processTask(accepted.taskId);
+
+    expect(await getJson(`/api/environments/${accepted.envId}`)).toMatchObject({
+      name: 'feature-dev',
+      imageTag: 'feature-123',
+      state: 'running',
+    });
+    const compose = await readFile(join(runtimeRoot, 'feature-dev', 'docker-compose.yml'), 'utf8');
+    expect(compose).toContain('harbor-sh.dailygn.com/pst/tgateserver:feature-123');
+  });
+
+  it('rejects invalid image tags', async () => {
+    const res = await app.request('/api/environments', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'bad-tag', owner: 'alice', imageTag: '../latest' }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error: {
+        code: 'INVALID_IMAGE_TAG',
+        message: 'Image tag must be 1-128 chars and contain only letters, numbers, underscore, dot, or dash',
+      },
+    });
+  });
+
   it('filters environment list by owner', async () => {
     await createQueued('alice-dev', 'alice');
     await createQueued('bob-dev', 'bob');
@@ -234,6 +269,21 @@ describe('environment API with task worker', () => {
       'harbor-sh.dailygn.com/pst/matcherserver:master-latest',
     ]);
     expect(dockerCalls.at(-1)?.args).toEqual(['up', '-d']);
+  });
+
+  it('updates images with the environment image tag', async () => {
+    const created = await createAndProcess('feature-dev', { imageTag: 'feature-123' });
+
+    const updateTaskId = await postAction(created.envId, 'update-images');
+    await processor.processTask(updateTaskId);
+
+    expect(pulledImages).toEqual([
+      'harbor-sh.dailygn.com/pst/tgateserver:feature-123',
+      'harbor-sh.dailygn.com/pst/gameserver:feature-123',
+      'harbor-sh.dailygn.com/pst/scenexserver:feature-123',
+      'harbor-sh.dailygn.com/pst/globalserver:feature-123',
+      'harbor-sh.dailygn.com/pst/matcherserver:feature-123',
+    ]);
   });
 
   it('destroys an environment asynchronously and hides it from the active list', async () => {
@@ -361,17 +411,20 @@ describe('environment API with task worker', () => {
     });
   });
 
-  async function createAndProcess(name: string): Promise<{ envId: string; taskId: string }> {
-    const created = await createQueued(name, 'alice');
+  async function createAndProcess(
+    name: string,
+    opts: { owner?: string; imageTag?: string } = {},
+  ): Promise<{ envId: string; taskId: string }> {
+    const created = await createQueued(name, opts.owner ?? 'alice', opts.imageTag);
     await processor.processTask(created.taskId);
     return created;
   }
 
-  async function createQueued(name: string, owner: string): Promise<{ envId: string; taskId: string }> {
+  async function createQueued(name: string, owner: string, imageTag?: string): Promise<{ envId: string; taskId: string }> {
     const res = await app.request('/api/environments', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name, owner }),
+      body: JSON.stringify({ name, owner, imageTag }),
     });
     return res.json();
   }

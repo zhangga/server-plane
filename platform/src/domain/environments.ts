@@ -9,6 +9,7 @@ import { assertCanRunTask, taskTypeForAction } from './stateMachine.js';
 import type { LifecycleAction } from './stateMachine.js';
 
 const NAME_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
+const IMAGE_TAG_PATTERN = /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$/;
 
 export interface EnvironmentResponse {
   id: string;
@@ -46,6 +47,7 @@ export interface EnvironmentServiceDeps {
 export interface CreateEnvironmentInput {
   name: string;
   owner: string;
+  imageTag?: string;
 }
 
 export interface ListEnvironmentInput {
@@ -73,6 +75,7 @@ export class EnvironmentService {
   async create(input: CreateEnvironmentInput): Promise<AcceptedTaskResponse> {
     const name = normalizeName(input.name);
     const owner = String(input.owner ?? '').trim();
+    const imageTag = normalizeImageTag(input.imageTag);
 
     if (!NAME_PATTERN.test(name)) {
       throw new AppError(
@@ -92,7 +95,7 @@ export class EnvironmentService {
       name,
       owner,
       slot,
-      imageTag: DEFAULT_IMAGE_TAG,
+      imageTag,
       state: 'creating',
       now,
     });
@@ -171,6 +174,17 @@ function ensureNoInFlightTask(store: EnvironmentStore, envId: string): void {
 
 function normalizeName(name: unknown): string {
   return String(name ?? '').trim();
+}
+
+function normalizeImageTag(imageTag: unknown): string {
+  const normalized = String(imageTag ?? '').trim() || DEFAULT_IMAGE_TAG;
+  if (!IMAGE_TAG_PATTERN.test(normalized)) {
+    throw new AppError(
+      'INVALID_IMAGE_TAG',
+      'Image tag must be 1-128 chars and contain only letters, numbers, underscore, dot, or dash',
+    );
+  }
+  return normalized;
 }
 
 function toResponse(env: EnvironmentRecord, latestTask?: TaskRecord): EnvironmentResponse {

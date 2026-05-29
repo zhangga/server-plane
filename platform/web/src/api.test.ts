@@ -46,13 +46,13 @@ describe('web api client', () => {
         expect(init).toMatchObject({
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ name: 'alice-dev', owner: 'alice' }),
+          body: JSON.stringify({ name: 'alice-dev', owner: 'alice', imageTag: 'feature-123' }),
         });
         return jsonResponse({ envId: 'env_1', taskId: 'task_1' }, 202);
       }),
     );
 
-    await expect(createEnvironment({ name: 'alice-dev', owner: 'alice' })).resolves.toEqual({
+    await expect(createEnvironment({ name: 'alice-dev', owner: 'alice', imageTag: 'feature-123' })).resolves.toEqual({
       envId: 'env_1',
       taskId: 'task_1',
     });

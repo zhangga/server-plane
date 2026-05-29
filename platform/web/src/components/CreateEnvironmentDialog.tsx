@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import type { CreateEnvironmentInput } from '../types';
 
+const DEFAULT_IMAGE_TAG = 'master-latest';
+
 interface CreateEnvironmentDialogProps {
   open: boolean;
   isPending: boolean;
@@ -12,6 +14,7 @@ interface CreateEnvironmentDialogProps {
 export function CreateEnvironmentDialog({ open, isPending, onClose, onSubmit }: CreateEnvironmentDialogProps) {
   const [name, setName] = useState('');
   const [owner, setOwner] = useState('');
+  const [imageTag, setImageTag] = useState(DEFAULT_IMAGE_TAG);
 
   if (!open) {
     return null;
@@ -24,7 +27,7 @@ export function CreateEnvironmentDialog({ open, isPending, onClose, onSubmit }: 
         aria-label="创建环境"
         onSubmit={(event) => {
           event.preventDefault();
-          onSubmit({ name: name.trim(), owner: owner.trim() });
+          onSubmit({ name: name.trim(), owner: owner.trim(), imageTag: imageTag.trim() });
         }}
       >
         <div className="dialog-header">
@@ -55,11 +58,26 @@ export function CreateEnvironmentDialog({ open, isPending, onClose, onSubmit }: 
             placeholder="alice"
           />
         </label>
+        <label>
+          镜像 tag
+          <input
+            id="environment-image-tag"
+            name="imageTag"
+            autoComplete="off"
+            value={imageTag}
+            onChange={(event) => setImageTag(event.target.value)}
+            placeholder={DEFAULT_IMAGE_TAG}
+          />
+        </label>
         <div className="dialog-actions">
           <button type="button" className="text-button" onClick={onClose}>
             取消
           </button>
-          <button type="submit" className="primary-button" disabled={isPending || !name.trim() || !owner.trim()}>
+          <button
+            type="submit"
+            className="primary-button"
+            disabled={isPending || !name.trim() || !owner.trim() || !imageTag.trim()}
+          >
             创建
           </button>
         </div>

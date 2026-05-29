@@ -53,4 +53,5 @@ export interface AcceptedTask {
 export interface CreateEnvironmentInput {
   name: string;
   owner: string;
+  imageTag: string;
 }
