@@ -1,0 +1,27 @@
+# IntelliJ IDEA
+.idea
+*.iml
+*.ipr
+*.iws
+.ijwb
+
+# Gradle
+build
+.gradle
+local.properties
+out
+
+# Maven (examples)
+target
+
+# OS X
+.DS_Store
+
+# VS Code
+.vscode/
+
+etcd-data/
+external_storage/
+mongo-data/
+redis-data/
+.ttgops-cli.yaml

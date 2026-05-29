@@ -1,0 +1,43 @@
+Configs:
+  Develop:
+    service_man_conf:
+      Port: 12010
+    gs_redis_conf:
+      RedisIp: <%= ips.redis %>
+      RedisPort: 6379
+      RedisPwd: "rFG4QoKXLtAZ"
+      RedisCluster: false
+      RedisTimeout: 5
+      RedisPoolMaxActive: 4
+      RedisPoolMaxIdle: 4
+      RedisPoolMinIdle: 1
+      RedisPoolMaxWait: -1
+      RedisPoolTestOnBorrow: false
+      RedisPoolTestOnReturn: false
+      RedisDbIndex: 1
+    gs_mongo_conf:
+      MongoConn: "mongodb://root:rFG4QoKXLtAZ@<%= ips.mongo %>:27017"
+      MongoDataBase: st_dev
+      MongoConnSize: 100
+    ThreadPoolConf:
+      LogicQueueSize: 100
+      GlobalScheduler: 2
+      LogicThreadSize: 4
+    GameConf:
+      AppID: 613238
+      AccessKey: ""
+      SecretKey: ""
+      GsdkIntHost: https://gsdk-sg.bytegsdk.com
+      GsdkExtHost: https://gsdk-sg.bytegsdk.com
+      Jwt: "S9XxfuqPqqGVLhk4LV8Jz9NhMQ9SDDRgM6pjeNTmRnRrcVtt"
+      RtcAppID: 67bedee88a6b20017a938cd0
+      RtcAppKey: ""
+      AntiDirtHost: https://gms-api.bytedance.com
+      IsTest: true
+      AntiDirt: true
+      LocalShield: true
+      Region:
+        "cn": 101.133.138.8:20000
+      IsCe: true
+      FileRelaySecretKey: ""
+      FileRelayHost: http://10.253.14.169:12100

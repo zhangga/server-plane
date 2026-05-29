@@ -1,0 +1,12 @@
+Configs:
+  Develop:
+    service_man_conf:
+      Port: 12030
+    mongo_conf:
+      MongoConn: "mongodb://root:rFG4QoKXLtAZ@172.18.0.112:27017"
+      MongoDataBase: st_dev
+      MongoConnSize: 100
+    ThreadPoolConf:
+      LogicQueueSize: 100
+      GlobalScheduler: 2
+      LogicThreadSize: 4

@@ -1,0 +1,7 @@
+# OS metadata
+.DS_Store
+
+# Platform subproject runtime
+platform/node_modules/
+platform/dist/
+platform/runtime/

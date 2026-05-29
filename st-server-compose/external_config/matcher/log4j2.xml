@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="60" shutdownHook="disable">
+  <Appenders>
+    <Console name="Console" target="SYSTEM_OUT">
+      <!-- 定义类型为Console的Appender -->
+      <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS}, %p matcher %c{-3} [%t] %m%n"/>
+      <!-- 定义类型为Pattern的Layout -->
+    </Console>
+    <RollingRandomAccessFile name="RollingFile" fileName="logs/matcher.log" filePattern="logs/matcher-%d{yyyy-MM-dd}.log">
+      <PatternLayout>
+        <Pattern>%d{yyyy-MM-dd HH:mm:ss.SSS}, %p matcher %c{-3} [%t] %m%n</Pattern>
+      </PatternLayout>
+      <Policies>
+        <TimeBasedTriggeringPolicy interval="1" modulate="true" />
+      </Policies>
+    </RollingRandomAccessFile>
+    <RollingRandomAccessFile name="BiAppender" fileName="logs/bi.log" filePattern="logs/bi-%d{yyyy-MM-dd}.log.gz">
+      <PatternLayout>
+        <Pattern>%m%n</Pattern>
+      </PatternLayout>
+      <Policies>
+        <TimeBasedTriggeringPolicy interval="1" modulate="true" />
+      </Policies>
+    </RollingRandomAccessFile>
+  </Appenders>
+  <Loggers>
+    <AsyncRoot level="info" includeLocation="false">
+      <AppenderRef ref="Console"/>
+      <AppenderRef ref="RollingFile" level="INFO"/>
+    </AsyncRoot>
+    <AsyncLogger name="bi" level="info" includeLocation="false">
+      <AppenderRef ref="BiAppender"/>
+    </AsyncLogger>
+  </Loggers>
+</Configuration>

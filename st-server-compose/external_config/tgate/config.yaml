@@ -1,0 +1,27 @@
+Configs:
+  Develop:
+    outer_tcp:
+      TcpSrvIp: 0.0.0.0
+      TcpSrvPort: 12001
+      TcpSrvTimeoutSec: 0
+    inner_tcp:
+      TcpSrvIp: 0.0.0.0
+      TcpSrvPort: 12002
+      TcpSrvTimeoutSec: 0
+    ThreadPoolConf:
+      GlobalScheduler: 1
+      LogicThreadSize: 1
+    NetKeyConf:
+      NeedKeyExchange: true
+      RsaPrivateKey: MIICdgIBADANBgkqhkiG9w0BAQEFAASCAmAwggJcAgEAAoGBALRT3Vv9DrkZATyujZGGGNwlFgENgpxp4i3EHyyLIpMF9ZRp7T9AYTX+EOaQjc+lutT2qrWi6vCxy9ywa3oT3lhN+7HjCL2BZLYuaS0t3IInzBIqN/ATbkWgzFtReq/NgR547dIFcDI21KEXLH81BA0GRR+mfxjTbRRaUAelim2dAgMBAAECgYAogbw0OSyQ/KJwAJ/RZCd6cCQ4uVGxFAHYGPmNtnVeRFTtcTv3XN1ZVQhz2l3YmphU1VH0ejO/PJkYKlMCOatUlyp+2CTqgWaI5FDW1hi6Fhnso0Qky+OHkIzpFQleBXb22+2WM4OsaGCtmy2LQGX4FEB7OaJi4e/jVDYo0O8AiwJBANnFeSDN4YKCnPfD/pbmtdIRzhudO8JU5YEuVD+01LddxOBi6bnIqz5PcI/7EFgU5pvf093JvmkvtlI1oIdGPPsCQQDT+7A47SSXZ/VBJzfgdvA4ngnZ2ShkL+nCoJBuJZ5zvMxcJlL4SE/sX0fZlz3F/B9/2nMgNenoZWS1Hthoz0xHAkEAplYpYR8gotk1ICK6cXSjaGNlNL5yiMrjyjoi684ptC2RVXr334ohEqUG61Lvdvfv9RuP7pZMNHfXIRAJH4pMxQJAJLZUIKfBTI9uhCgcnz06ATQtlJLtUdySaWiRWuIc/QJXiiYA/IrZfKBLuz1cL2uosOXORmfP6LWWqV98LzqnhQJAKEZq6Gw2fYp1/h6Ap9dv+6poAqs0o3t2q3NBRnfIPH4teYcev3iJDb4Ayv9se/TihzZt1Q2Yhdk/bveJLYcISA==
+      RsaPublicKey: MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC0U91b/Q65GQE8ro2RhhjcJRYBDYKcaeItxB8siyKTBfWUae0/QGE1/hDmkI3PpbrU9qq1ourwscvcsGt6E95YTfux4wi9gWS2LmktLdyCJ8wSKjfwE25FoMxbUXqvzYEeeO3SBXAyNtShFyx/NQQNBkUfpn8Y020UWlAHpYptnQIDAQAB
+      MaxCacheSize: 100
+    LoginQueueConf:
+      MaxOnlineNum: 5000
+      MaxQueueSize: 3000
+      BroadcastSpiltNum: 20
+      BroadcastPeriodMin: 3000
+      BroadcastPeriodMax: 20000
+    interval:
+      totalMsgTokenCount: 50
+      totalMsgInterval: 200
