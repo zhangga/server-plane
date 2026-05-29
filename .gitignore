@@ -5,3 +5,5 @@
 platform/node_modules/
 platform/dist/
 platform/runtime/
+
+st-server-compose/
