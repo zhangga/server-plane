@@ -36,6 +36,14 @@ export async function postEnvironmentAction(envId: string, action: Exclude<Envir
   });
 }
 
+export async function changeEnvironmentImageTag(envId: string, imageTag: string): Promise<AcceptedTask> {
+  return request<AcceptedTask>(`/api/environments/${envId}/image-tag`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ imageTag }),
+  });
+}
+
 export async function deleteEnvironment(envId: string): Promise<AcceptedTask> {
   return request<AcceptedTask>(`/api/environments/${envId}`, {
     method: 'DELETE',

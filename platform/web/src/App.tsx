@@ -12,12 +12,20 @@ import {
   RotateCcw,
   Server,
   Square,
+  Tag,
   Trash2,
   UserRound,
 } from 'lucide-react';
-import { createEnvironment, deleteEnvironment, fetchEnvironments, postEnvironmentAction } from './api';
+import {
+  changeEnvironmentImageTag,
+  createEnvironment,
+  deleteEnvironment,
+  fetchEnvironments,
+  postEnvironmentAction,
+} from './api';
 import { ConfirmActionDialog } from './components/ConfirmActionDialog';
 import { CreateEnvironmentDialog } from './components/CreateEnvironmentDialog';
+import { ImageTagDialog } from './components/ImageTagDialog';
 import { TaskDrawer } from './components/TaskDrawer';
 import { loadOwnerPreference, saveOwnerPreference } from './ownerPreference';
 import { actionDisabledReason, filterEnvironments, hasInFlightTask } from './state';
@@ -41,6 +49,7 @@ export function App() {
   const [ownerDraft, setOwnerDraft] = useState(currentOwner);
   const [createOpen, setCreateOpen] = useState(false);
   const [activeTask, setActiveTask] = useState<AcceptedTask | null>(null);
+  const [pendingTagEnv, setPendingTagEnv] = useState<Environment | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<{
     env: Environment;
     action: Extract<EnvironmentAction, 'destroy' | 'update-images'>;
@@ -60,6 +69,16 @@ export function App() {
     mutationFn: createEnvironment,
     onSuccess: (task) => {
       setCreateOpen(false);
+      setActiveTask(task);
+      void queryClient.invalidateQueries({ queryKey: ['environments'] });
+    },
+  });
+
+  const changeTagMutation = useMutation({
+    mutationFn: async ({ env, imageTag }: { env: Environment; imageTag: string }) =>
+      changeEnvironmentImageTag(env.id, imageTag),
+    onSuccess: (task) => {
+      setPendingTagEnv(null);
       setActiveTask(task);
       void queryClient.invalidateQueries({ queryKey: ['environments'] });
     },
@@ -166,6 +185,7 @@ export function App() {
                 }
                 actionMutation.mutate({ env, action });
               }}
+              onChangeTag={(targetEnv) => setPendingTagEnv(targetEnv)}
               onOpenTask={(taskId) => setActiveTask({ envId: env.id, taskId })}
             />
           ))}
@@ -200,6 +220,19 @@ export function App() {
         }}
       />
 
+      <ImageTagDialog
+        open={Boolean(pendingTagEnv)}
+        env={pendingTagEnv}
+        isPending={changeTagMutation.isPending}
+        onClose={() => setPendingTagEnv(null)}
+        onSubmit={(imageTag) => {
+          if (!pendingTagEnv) {
+            return;
+          }
+          changeTagMutation.mutate({ env: pendingTagEnv, imageTag });
+        }}
+      />
+
       <TaskDrawer
         taskId={activeTask?.taskId ?? null}
         onClose={() => {
@@ -223,10 +256,12 @@ function Metric({ label, value }: { label: string; value: number }) {
 function EnvironmentCard({
   env,
   onAction,
+  onChangeTag,
   onOpenTask,
 }: {
   env: Environment;
   onAction: (action: EnvironmentAction) => void;
+  onChangeTag: (env: Environment) => void;
   onOpenTask: (taskId: string) => void;
 }) {
   const actions: Array<{ key: EnvironmentAction; label: string; icon: ReactNode }> = [
@@ -237,6 +272,7 @@ function EnvironmentCard({
     { key: 'update-images', label: '更新镜像', icon: <RefreshCw size={15} /> },
     { key: 'destroy', label: '销毁', icon: <Trash2 size={15} /> },
   ];
+  const tagDisabledReason = actionDisabledReason('update-images', env);
 
   return (
     <article className="env-card">
@@ -282,6 +318,14 @@ function EnvironmentCard({
       ) : null}
 
       <div className="action-row">
+        <button
+          className="icon-button"
+          disabled={Boolean(tagDisabledReason)}
+          title={tagDisabledReason ?? '切换镜像 tag'}
+          onClick={() => onChangeTag(env)}
+        >
+          <Tag size={15} />
+        </button>
         {actions.map((action) => {
           const disabledReason = actionDisabledReason(action.key, env);
           return (

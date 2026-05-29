@@ -73,6 +73,15 @@ export function createApp(deps: AppDeps): Hono {
     }
   });
 
+  app.post('/api/environments/:id/image-tag', async (c) => {
+    try {
+      const body = await c.req.json().catch(() => ({}));
+      return c.json(await environments.changeImageTag(c.req.param('id'), body.imageTag), 202);
+    } catch (err) {
+      return errorJson(c, err);
+    }
+  });
+
   for (const action of ['start', 'stop', 'restart', 'wipe', 'update-images'] as const) {
     app.post(`/api/environments/:id/${action}`, async (c) => {
       try {

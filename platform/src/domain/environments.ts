@@ -124,6 +124,17 @@ export class EnvironmentService {
     return this.enqueueTask(env.id, type);
   }
 
+  async changeImageTag(envId: string, imageTagInput: unknown): Promise<AcceptedTaskResponse> {
+    const env = this.requireEnv(envId);
+    ensureNoInFlightTask(this.deps.store, env.id);
+    assertCanRunTask('env.update_images', env.state);
+
+    const imageTag = normalizeImageTag(imageTagInput);
+    this.deps.store.updateImageTag(env.id, imageTag, new Date().toISOString());
+
+    return this.enqueueTask(env.id, 'env.update_images');
+  }
+
   async destroy(envId: string): Promise<AcceptedTaskResponse> {
     const env = this.requireEnv(envId);
     ensureNoInFlightTask(this.deps.store, env.id);

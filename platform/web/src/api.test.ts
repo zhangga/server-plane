@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createEnvironment, deleteEnvironment, fetchEnvironments, postEnvironmentAction } from './api';
+import {
+  changeEnvironmentImageTag,
+  createEnvironment,
+  deleteEnvironment,
+  fetchEnvironments,
+  postEnvironmentAction,
+} from './api';
 
 describe('web api client', () => {
   it('fetches environment list', async () => {
@@ -79,6 +85,26 @@ describe('web api client', () => {
     await expect(deleteEnvironment('env_1')).resolves.toEqual({
       envId: 'env_1',
       taskId: 'task_destroy',
+    });
+  });
+
+  it('changes an environment image tag', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url, init) => {
+        expect(url).toBe('/api/environments/env_1/image-tag');
+        expect(init).toMatchObject({
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ imageTag: 'feature-456' }),
+        });
+        return jsonResponse({ envId: 'env_1', taskId: 'task_update' }, 202);
+      }),
+    );
+
+    await expect(changeEnvironmentImageTag('env_1', 'feature-456')).resolves.toEqual({
+      envId: 'env_1',
+      taskId: 'task_update',
     });
   });
 });

@@ -273,6 +273,13 @@ export class EnvironmentStore {
     return this.findById(id);
   }
 
+  updateImageTag(id: string, imageTag: string, now: string): EnvironmentRecord | undefined {
+    this.db
+      .prepare('UPDATE environments SET image_tag = ?, updated_at = ? WHERE id = ?')
+      .run(imageTag, now, id);
+    return this.findById(id);
+  }
+
   createTask(input: CreateTaskInput): TaskRecord {
     this.db
       .prepare(

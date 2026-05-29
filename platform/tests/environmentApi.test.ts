@@ -286,6 +286,53 @@ describe('environment API with task worker', () => {
     ]);
   });
 
+  it('changes an existing environment image tag and enqueues an image update task', async () => {
+    const created = await createAndProcess('feature-dev', { imageTag: 'feature-123' });
+
+    const updateTaskId = await postImageTag(created.envId, 'feature-456');
+
+    expect(await getJson(`/api/environments/${created.envId}`)).toMatchObject({
+      name: 'feature-dev',
+      imageTag: 'feature-456',
+      state: 'running',
+      latestTask: {
+        id: updateTaskId,
+        type: 'env.update_images',
+        status: 'queued',
+      },
+    });
+
+    await processor.processTask(updateTaskId);
+
+    expect(pulledImages).toEqual([
+      'harbor-sh.dailygn.com/pst/tgateserver:feature-456',
+      'harbor-sh.dailygn.com/pst/gameserver:feature-456',
+      'harbor-sh.dailygn.com/pst/scenexserver:feature-456',
+      'harbor-sh.dailygn.com/pst/globalserver:feature-456',
+      'harbor-sh.dailygn.com/pst/matcherserver:feature-456',
+    ]);
+    expect((await getJson(`/api/environments/${created.envId}`)).state).toBe('running');
+  });
+
+  it('rejects invalid image tag changes', async () => {
+    const created = await createAndProcess('feature-dev');
+
+    const res = await app.request(`/api/environments/${created.envId}/image-tag`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ imageTag: '../latest' }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error: {
+        code: 'INVALID_IMAGE_TAG',
+        message: 'Image tag must be 1-128 chars and contain only letters, numbers, underscore, dot, or dash',
+      },
+    });
+    expect((await getJson(`/api/environments/${created.envId}`)).imageTag).toBe('master-latest');
+  });
+
   it('destroys an environment asynchronously and hides it from the active list', async () => {
     const created = await createAndProcess('alice-dev');
 
@@ -431,6 +478,17 @@ describe('environment API with task worker', () => {
 
   async function postAction(envId: string, action: string): Promise<string> {
     const res = await app.request(`/api/environments/${envId}/${action}`, { method: 'POST' });
+    expect(res.status).toBe(202);
+    const body = await res.json();
+    return body.taskId;
+  }
+
+  async function postImageTag(envId: string, imageTag: string): Promise<string> {
+    const res = await app.request(`/api/environments/${envId}/image-tag`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ imageTag }),
+    });
     expect(res.status).toBe(202);
     const body = await res.json();
     return body.taskId;
