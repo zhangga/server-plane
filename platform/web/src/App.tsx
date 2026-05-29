@@ -21,7 +21,7 @@ import { CreateEnvironmentDialog } from './components/CreateEnvironmentDialog';
 import { TaskDrawer } from './components/TaskDrawer';
 import { loadOwnerPreference, saveOwnerPreference } from './ownerPreference';
 import { actionDisabledReason, filterEnvironments, hasInFlightTask } from './state';
-import type { AcceptedTask, Environment, EnvironmentAction, EnvironmentFilter } from './types';
+import type { AcceptedTask, Environment, EnvironmentAction, EnvironmentFilter, EnvironmentState } from './types';
 
 const FILTERS: Array<{ key: EnvironmentFilter; label: string }> = [
   { key: 'mine', label: '我的' },
@@ -31,6 +31,8 @@ const FILTERS: Array<{ key: EnvironmentFilter; label: string }> = [
   { key: 'failed', label: '失败' },
   { key: 'destroyed', label: '已销毁' },
 ];
+
+const STATE_FILTERS = new Set<EnvironmentFilter>(['running', 'stopped', 'failed', 'destroyed']);
 
 export function App() {
   const queryClient = useQueryClient();
@@ -45,8 +47,12 @@ export function App() {
   } | null>(null);
 
   const environmentsQuery = useQuery({
-    queryKey: ['environments', filter === 'mine' ? currentOwner : 'all'],
-    queryFn: () => fetchEnvironments(filter === 'mine' ? { owner: currentOwner } : undefined),
+    queryKey: ['environments', filter, filter === 'mine' ? currentOwner : 'all'],
+    queryFn: () =>
+      fetchEnvironments({
+        owner: filter === 'mine' ? currentOwner : undefined,
+        state: STATE_FILTERS.has(filter) ? (filter as EnvironmentState) : undefined,
+      }),
     refetchInterval: 5000,
   });
 

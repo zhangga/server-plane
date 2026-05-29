@@ -1,4 +1,4 @@
-import type { AcceptedTask, CreateEnvironmentInput, Environment, EnvironmentAction } from './types';
+import type { AcceptedTask, CreateEnvironmentInput, Environment, EnvironmentAction, EnvironmentState } from './types';
 
 interface EnvironmentListResponse {
   environments: Environment[];
@@ -6,12 +6,16 @@ interface EnvironmentListResponse {
 
 export interface FetchEnvironmentsOptions {
   owner?: string;
+  state?: EnvironmentState;
 }
 
 export async function fetchEnvironments(options: FetchEnvironmentsOptions = {}): Promise<Environment[]> {
   const params = new URLSearchParams();
   if (options.owner) {
     params.set('owner', options.owner);
+  }
+  if (options.state) {
+    params.set('state', options.state);
   }
   const query = params.toString();
   const data = await request<EnvironmentListResponse>(`/api/environments${query ? `?${query}` : ''}`);
