@@ -235,14 +235,25 @@ export class EnvironmentStore {
     return row ? toRecord(row) : undefined;
   }
 
-  list(opts: { state?: EnvironmentState } = {}): EnvironmentRecord[] {
-    const rows = opts.state
-      ? (this.db
-          .prepare('SELECT * FROM environments WHERE state = ? ORDER BY created_at ASC')
-          .all(opts.state) as EnvironmentRow[])
-      : (this.db
-          .prepare("SELECT * FROM environments WHERE state != 'destroyed' ORDER BY created_at ASC")
-          .all() as EnvironmentRow[]);
+  list(opts: { state?: EnvironmentState; owner?: string } = {}): EnvironmentRecord[] {
+    const clauses: string[] = [];
+    const params: unknown[] = [];
+
+    if (opts.state) {
+      clauses.push('state = ?');
+      params.push(opts.state);
+    } else {
+      clauses.push("state != 'destroyed'");
+    }
+
+    if (opts.owner) {
+      clauses.push('owner = ?');
+      params.push(opts.owner);
+    }
+
+    const rows = this.db
+      .prepare(`SELECT * FROM environments WHERE ${clauses.join(' AND ')} ORDER BY created_at ASC`)
+      .all(...params) as EnvironmentRow[];
     return rows.map(toRecord);
   }
 

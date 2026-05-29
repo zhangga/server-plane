@@ -4,8 +4,17 @@ interface EnvironmentListResponse {
   environments: Environment[];
 }
 
-export async function fetchEnvironments(): Promise<Environment[]> {
-  const data = await request<EnvironmentListResponse>('/api/environments');
+export interface FetchEnvironmentsOptions {
+  owner?: string;
+}
+
+export async function fetchEnvironments(options: FetchEnvironmentsOptions = {}): Promise<Environment[]> {
+  const params = new URLSearchParams();
+  if (options.owner) {
+    params.set('owner', options.owner);
+  }
+  const query = params.toString();
+  const data = await request<EnvironmentListResponse>(`/api/environments${query ? `?${query}` : ''}`);
   return data.environments;
 }
 

@@ -14,6 +14,18 @@ describe('web api client', () => {
     await expect(fetchEnvironments()).resolves.toEqual([]);
   });
 
+  it('fetches environment list with owner filter', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url) => {
+        expect(url).toBe('/api/environments?owner=alice');
+        return jsonResponse({ environments: [] });
+      }),
+    );
+
+    await expect(fetchEnvironments({ owner: 'alice' })).resolves.toEqual([]);
+  });
+
   it('creates environments and returns accepted task ids', async () => {
     vi.stubGlobal(
       'fetch',

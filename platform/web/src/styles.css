@@ -158,6 +158,38 @@ h2 {
   gap: 10px;
 }
 
+.owner-control {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 0 8px;
+  color: var(--muted);
+  background: #fafbf7;
+}
+
+.owner-control span {
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.owner-control input {
+  width: 96px;
+  min-height: 28px;
+  border: 0;
+  padding: 0;
+  color: var(--ink);
+  background: transparent;
+  font-weight: 800;
+}
+
+.owner-control input:focus {
+  outline: 2px solid rgba(15, 118, 110, 0.28);
+  outline-offset: 2px;
+}
+
 .metric {
   min-width: 68px;
   padding: 8px 10px;

@@ -48,11 +48,21 @@ export interface CreateEnvironmentInput {
   owner: string;
 }
 
+export interface ListEnvironmentInput {
+  state?: EnvironmentState;
+  owner?: string;
+}
+
 export class EnvironmentService {
   constructor(private readonly deps: EnvironmentServiceDeps) {}
 
-  list(state?: EnvironmentState): EnvironmentResponse[] {
-    return this.deps.store.list({ state }).map((env) => toResponse(env, this.deps.store.latestTaskForEnv(env.id)));
+  list(input: ListEnvironmentInput = {}): EnvironmentResponse[] {
+    return this.deps.store
+      .list({
+        state: input.state,
+        owner: input.owner?.trim() || undefined,
+      })
+      .map((env) => toResponse(env, this.deps.store.latestTaskForEnv(env.id)));
   }
 
   get(id: string): EnvironmentResponse {

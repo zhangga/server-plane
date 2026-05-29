@@ -19,10 +19,9 @@ import { createEnvironment, deleteEnvironment, fetchEnvironments, postEnvironmen
 import { ConfirmActionDialog } from './components/ConfirmActionDialog';
 import { CreateEnvironmentDialog } from './components/CreateEnvironmentDialog';
 import { TaskDrawer } from './components/TaskDrawer';
+import { loadOwnerPreference, saveOwnerPreference } from './ownerPreference';
 import { actionDisabledReason, filterEnvironments, hasInFlightTask } from './state';
 import type { AcceptedTask, Environment, EnvironmentAction, EnvironmentFilter } from './types';
-
-const CURRENT_OWNER = 'alice';
 
 const FILTERS: Array<{ key: EnvironmentFilter; label: string }> = [
   { key: 'mine', label: '我的' },
@@ -36,6 +35,8 @@ const FILTERS: Array<{ key: EnvironmentFilter; label: string }> = [
 export function App() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<EnvironmentFilter>('all');
+  const [currentOwner, setCurrentOwner] = useState(loadOwnerPreference);
+  const [ownerDraft, setOwnerDraft] = useState(currentOwner);
   const [createOpen, setCreateOpen] = useState(false);
   const [activeTask, setActiveTask] = useState<AcceptedTask | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<{
@@ -44,8 +45,8 @@ export function App() {
   } | null>(null);
 
   const environmentsQuery = useQuery({
-    queryKey: ['environments'],
-    queryFn: fetchEnvironments,
+    queryKey: ['environments', filter === 'mine' ? currentOwner : 'all'],
+    queryFn: () => fetchEnvironments(filter === 'mine' ? { owner: currentOwner } : undefined),
     refetchInterval: 5000,
   });
 
@@ -73,11 +74,18 @@ export function App() {
 
   const environments = environmentsQuery.data ?? [];
   const visibleEnvironments = useMemo(
-    () => filterEnvironments(environments, filter, CURRENT_OWNER),
-    [environments, filter],
+    () => filterEnvironments(environments, filter, currentOwner),
+    [currentOwner, environments, filter],
   );
   const runningCount = environments.filter((env) => env.state === 'running').length;
   const busyCount = environments.filter(hasInFlightTask).length;
+
+  const commitOwner = () => {
+    const nextOwner = ownerDraft.trim() || currentOwner;
+    setOwnerDraft(nextOwner);
+    setCurrentOwner(nextOwner);
+    saveOwnerPreference(nextOwner);
+  };
 
   return (
     <main className="shell">
@@ -106,6 +114,23 @@ export function App() {
             <h1>PST 环境平台</h1>
           </div>
           <div className="topbar-actions">
+            <label className="owner-control">
+              <UserRound size={14} />
+              <span>归属</span>
+              <input
+                id="current-owner"
+                name="currentOwner"
+                value={ownerDraft}
+                autoComplete="username"
+                onChange={(event) => setOwnerDraft(event.target.value)}
+                onBlur={commitOwner}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.currentTarget.blur();
+                  }
+                }}
+              />
+            </label>
             <Metric label="运行" value={runningCount} />
             <Metric label="任务" value={busyCount} />
             <button className="primary-button" onClick={() => setCreateOpen(true)}>

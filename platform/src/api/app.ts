@@ -37,7 +37,8 @@ export function createApp(deps: AppDeps): Hono {
 
   app.get('/api/environments', (c) => {
     const state = c.req.query('state') as EnvironmentState | undefined;
-    return c.json({ environments: environments.list(state) });
+    const owner = c.req.query('owner');
+    return c.json({ environments: environments.list({ state, owner }) });
   });
 
   app.post('/api/environments', async (c) => {

@@ -192,6 +192,16 @@ describe('environment API with task worker', () => {
     expect(logs).toContain('"status":"succeeded"');
   });
 
+  it('filters environment list by owner', async () => {
+    await createQueued('alice-dev', 'alice');
+    await createQueued('bob-dev', 'bob');
+
+    expect(await getJson('/api/environments?owner=alice')).toMatchObject({
+      environments: [{ name: 'alice-dev', owner: 'alice' }],
+    });
+    expect((await getJson('/api/environments?owner=alice')).environments).toHaveLength(1);
+  });
+
   it('runs stop, start, restart, wipe, and update-images tasks in the worker', async () => {
     const created = await createAndProcess('alice-dev');
 
@@ -352,14 +362,18 @@ describe('environment API with task worker', () => {
   });
 
   async function createAndProcess(name: string): Promise<{ envId: string; taskId: string }> {
+    const created = await createQueued(name, 'alice');
+    await processor.processTask(created.taskId);
+    return created;
+  }
+
+  async function createQueued(name: string, owner: string): Promise<{ envId: string; taskId: string }> {
     const res = await app.request('/api/environments', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name, owner: 'alice' }),
+      body: JSON.stringify({ name, owner }),
     });
-    const created = await res.json();
-    await processor.processTask(created.taskId);
-    return created;
+    return res.json();
   }
 
   async function postAction(envId: string, action: string): Promise<string> {
