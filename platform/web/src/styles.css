@@ -186,6 +186,10 @@ h2 {
   background: var(--accent);
 }
 
+.danger-button {
+  background: var(--danger);
+}
+
 .text-button {
   min-height: 36px;
   padding: 0 12px;
@@ -280,12 +284,19 @@ h2 {
 }
 
 .env-meta span,
-.task-link {
+.task-link,
+.task-badge {
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 3px 8px;
   color: var(--muted);
   background: #fafbf7;
+}
+
+.task-badge {
+  color: var(--accent);
+  border-color: #9fcac1;
+  background: #e9f4f1;
 }
 
 .port-grid {
@@ -366,6 +377,26 @@ input {
   border-radius: 7px;
   padding: 0 11px;
   background: #fff;
+}
+
+.warning-panel {
+  border: 1px solid #e0c7a1;
+  border-radius: 7px;
+  padding: 10px;
+  display: flex;
+  gap: 8px;
+  color: #7c3f10;
+  background: #fff8ed;
+}
+
+.warning-panel svg {
+  flex: 0 0 auto;
+}
+
+.danger-copy {
+  border-color: #e2aaa5;
+  color: var(--danger);
+  background: #fff4f2;
 }
 
 .task-drawer {

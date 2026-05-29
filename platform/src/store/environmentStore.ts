@@ -193,6 +193,11 @@ export class EnvironmentStore {
     this.db.close();
   }
 
+  healthCheck(): boolean {
+    this.db.prepare('SELECT 1').get();
+    return true;
+  }
+
   create(input: CreateEnvironmentRecordInput): EnvironmentRecord {
     this.db
       .prepare(

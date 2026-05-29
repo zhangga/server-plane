@@ -16,6 +16,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import { createEnvironment, deleteEnvironment, fetchEnvironments, postEnvironmentAction } from './api';
+import { ConfirmActionDialog } from './components/ConfirmActionDialog';
 import { CreateEnvironmentDialog } from './components/CreateEnvironmentDialog';
 import { TaskDrawer } from './components/TaskDrawer';
 import { actionDisabledReason, filterEnvironments, hasInFlightTask } from './state';
@@ -37,10 +38,15 @@ export function App() {
   const [filter, setFilter] = useState<EnvironmentFilter>('all');
   const [createOpen, setCreateOpen] = useState(false);
   const [activeTask, setActiveTask] = useState<AcceptedTask | null>(null);
+  const [pendingConfirmation, setPendingConfirmation] = useState<{
+    env: Environment;
+    action: Extract<EnvironmentAction, 'destroy' | 'update-images'>;
+  } | null>(null);
 
   const environmentsQuery = useQuery({
     queryKey: ['environments'],
     queryFn: fetchEnvironments,
+    refetchInterval: 5000,
   });
 
   const createMutation = useMutation({
@@ -123,7 +129,8 @@ export function App() {
               key={env.id}
               env={env}
               onAction={(action) => {
-                if (action === 'destroy' && !window.confirm(`销毁 ${env.name}？`)) {
+                if (action === 'destroy' || action === 'update-images') {
+                  setPendingConfirmation({ env, action });
                   return;
                 }
                 actionMutation.mutate({ env, action });
@@ -145,6 +152,21 @@ export function App() {
         isPending={createMutation.isPending}
         onClose={() => setCreateOpen(false)}
         onSubmit={(input) => createMutation.mutate(input)}
+      />
+
+      <ConfirmActionDialog
+        open={Boolean(pendingConfirmation)}
+        env={pendingConfirmation?.env ?? null}
+        action={pendingConfirmation?.action ?? null}
+        isPending={actionMutation.isPending}
+        onClose={() => setPendingConfirmation(null)}
+        onConfirm={(action) => {
+          if (!pendingConfirmation) {
+            return;
+          }
+          actionMutation.mutate({ env: pendingConfirmation.env, action });
+          setPendingConfirmation(null);
+        }}
       />
 
       <TaskDrawer
@@ -202,9 +224,13 @@ function EnvironmentCard({
         <span>slot {env.slot}</span>
         <span>{env.imageTag}</span>
         {env.latestTask ? (
-          <button className="task-link" onClick={() => onOpenTask(env.latestTask!.id)}>
-            {env.latestTask.type}
-          </button>
+          hasInFlightTask(env) ? (
+            <span className="task-badge">进行中: {env.latestTask.type}</span>
+          ) : (
+            <button className="task-link" onClick={() => onOpenTask(env.latestTask!.id)}>
+              {env.latestTask.type}
+            </button>
+          )
         ) : null}
       </div>
 

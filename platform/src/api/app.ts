@@ -24,7 +24,13 @@ export function createApp(deps: AppDeps): Hono {
     taskQueue: deps.taskQueue,
   });
 
-  app.get('/api/health', (c) => c.json({ ok: true }));
+  app.get('/api/health', (c) => {
+    const checks = {
+      store: deps.store.healthCheck(),
+      queue: Boolean(deps.taskQueue),
+    };
+    return c.json({ ok: Object.values(checks).every(Boolean), checks });
+  });
 
   app.get('/api/slots', (c) => c.json({ occupiedSlots: deps.store.occupiedSlots() }));
 
@@ -78,7 +84,7 @@ export function createApp(deps: AppDeps): Hono {
     try {
       const task = deps.store.findTaskById(c.req.param('taskId'));
       if (!task) {
-        throw new AppError('ENV_NOT_FOUND', 'Task not found');
+        throw new AppError('TASK_NOT_FOUND', 'Task not found');
       }
       return c.json(task);
     } catch (err) {
@@ -88,6 +94,9 @@ export function createApp(deps: AppDeps): Hono {
 
   app.get('/api/tasks/:taskId/logs', (c) => {
     const taskId = c.req.param('taskId');
+    if (!deps.store.findTaskById(taskId)) {
+      return errorJson(c, new AppError('TASK_NOT_FOUND', 'Task not found'));
+    }
     const lastEventId = Number.parseInt(c.req.header('Last-Event-ID') ?? '0', 10);
     const stream = createTaskLogStream(deps.store, taskId, Number.isFinite(lastEventId) ? lastEventId : 0);
     return new Response(stream, {

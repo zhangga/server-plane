@@ -5,26 +5,10 @@ import type { TaskQueue } from '../queue/taskQueue.js';
 import type { EnvironmentRecord, EnvironmentState, EnvironmentStore, TaskRecord, TaskType } from '../store/environmentStore.js';
 import { AppError } from './errors.js';
 import { portsForSlot } from './ports.js';
+import { assertCanRunTask, taskTypeForAction } from './stateMachine.js';
+import type { LifecycleAction } from './stateMachine.js';
 
 const NAME_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
-
-const ACTION_TO_TASK = {
-  start: 'env.start',
-  stop: 'env.stop',
-  restart: 'env.restart',
-  wipe: 'env.wipe',
-  'update-images': 'env.update_images',
-} as const satisfies Record<string, TaskType>;
-
-const ALLOWED_ACTION_STATES: Record<(typeof ACTION_TO_TASK)[keyof typeof ACTION_TO_TASK], EnvironmentState[]> = {
-  'env.start': ['stopped', 'failed'],
-  'env.stop': ['running'],
-  'env.restart': ['running'],
-  'env.wipe': ['running', 'stopped'],
-  'env.update_images': ['running', 'stopped'],
-};
-
-const DESTROYABLE_STATES = new Set<EnvironmentState>(['creating', 'running', 'stopped', 'failed']);
 
 export interface EnvironmentResponse {
   id: string;
@@ -113,15 +97,12 @@ export class EnvironmentService {
     return { envId: env.id, taskId: task.id };
   }
 
-  async enqueueAction(envId: string, action: keyof typeof ACTION_TO_TASK): Promise<AcceptedTaskResponse> {
+  async enqueueAction(envId: string, action: LifecycleAction): Promise<AcceptedTaskResponse> {
     const env = this.requireEnv(envId);
     ensureNoInFlightTask(this.deps.store, env.id);
 
-    const type = ACTION_TO_TASK[action];
-    const allowedStates = ALLOWED_ACTION_STATES[type];
-    if (!allowedStates.includes(env.state)) {
-      throw new AppError('INVALID_STATE_TRANSITION', `Cannot run ${type} for environment in state ${env.state}`);
-    }
+    const type = taskTypeForAction(action);
+    assertCanRunTask(type, env.state);
 
     if (type === 'env.start') {
       this.deps.store.updateState(env.id, 'creating', new Date().toISOString());
@@ -134,9 +115,7 @@ export class EnvironmentService {
     const env = this.requireEnv(envId);
     ensureNoInFlightTask(this.deps.store, env.id);
 
-    if (!DESTROYABLE_STATES.has(env.state)) {
-      throw new AppError('INVALID_STATE_TRANSITION', `Cannot destroy environment in state ${env.state}`);
-    }
+    assertCanRunTask('env.destroy', env.state);
     this.deps.store.updateState(env.id, 'destroying', new Date().toISOString());
 
     return this.enqueueTask(env.id, 'env.destroy');

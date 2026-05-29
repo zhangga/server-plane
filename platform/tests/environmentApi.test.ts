@@ -65,11 +65,37 @@ describe('environment API with task worker', () => {
     const res = await app.request('/api/health');
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true });
+    expect(await res.json()).toEqual({
+      ok: true,
+      checks: {
+        queue: true,
+        store: true,
+      },
+    });
 
     const slots = await app.request('/api/slots');
     expect(slots.status).toBe(200);
     expect(await slots.json()).toEqual({ occupiedSlots: [] });
+  });
+
+  it('returns TASK_NOT_FOUND for missing task detail and logs', async () => {
+    const detail = await app.request('/api/tasks/task_missing');
+    expect(detail.status).toBe(404);
+    expect(await detail.json()).toEqual({
+      error: {
+        code: 'TASK_NOT_FOUND',
+        message: 'Task not found',
+      },
+    });
+
+    const logs = await app.request('/api/tasks/task_missing/logs');
+    expect(logs.status).toBe(404);
+    expect(await logs.json()).toEqual({
+      error: {
+        code: 'TASK_NOT_FOUND',
+        message: 'Task not found',
+      },
+    });
   });
 
   it('enqueues create, worker renders runtime, and task logs are available over SSE', async () => {

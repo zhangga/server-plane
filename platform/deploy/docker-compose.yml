@@ -1,0 +1,51 @@
+name: pst-platform
+
+x-platform-build: &platform-build
+  context: ..
+  dockerfile: Dockerfile
+
+x-platform-env: &platform-env
+  PST_REDIS_URL: redis://redis:6379
+  PST_RUNTIME_ROOT: ${PST_RUNTIME_ROOT:-/data00/pst-platform/runtime}
+  PST_DB_PATH: ${PST_DB_PATH:-/data00/pst-platform/runtime/metadata.sqlite}
+  PST_TEMPLATE_ROOT: /app/templates
+
+services:
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    restart: unless-stopped
+    volumes:
+      - queue-redis:/data
+
+  api:
+    build: *platform-build
+    command: ["pnpm", "dev:api"]
+    depends_on:
+      - redis
+    environment:
+      <<: *platform-env
+      PORT: "3000"
+    ports:
+      - "${PST_PLATFORM_PORT:-3000}:3000"
+    restart: unless-stopped
+    volumes:
+      - ${PST_RUNTIME_ROOT:-/data00/pst-platform/runtime}:${PST_RUNTIME_ROOT:-/data00/pst-platform/runtime}
+
+  worker:
+    build: *platform-build
+    command: ["pnpm", "dev:worker"]
+    depends_on:
+      - redis
+    environment:
+      <<: *platform-env
+      PST_TTGOPS_BIN: /ttgops/ttgops-cli_linux64
+      PST_TTGOPS_CONFIG: /ttgops/.ttgops-cli.yaml
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${PST_RUNTIME_ROOT:-/data00/pst-platform/runtime}:${PST_RUNTIME_ROOT:-/data00/pst-platform/runtime}
+      - ${PST_TTGOPS_DIR:-../../st-server-compose}:/ttgops:ro
+
+volumes:
+  queue-redis:
