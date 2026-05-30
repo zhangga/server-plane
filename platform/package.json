@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build:web": "vite build --config web/vite.config.ts",
+    "dev:local": "tsx scripts/dev-local.ts",
     "dev:api": "tsx src/server.ts",
     "dev:web": "vite --config web/vite.config.ts",
     "dev:worker": "tsx src/worker.ts",
